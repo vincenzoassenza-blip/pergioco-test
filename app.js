@@ -2,6 +2,10 @@ const romeToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome'}).fo
 // immagini non caricabili (cover, locandine, icone): si nascondono invece di mostrare l'icona rotta o il testo alternativo
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG')t.classList.add('imgko')},true);
 const START=location.hash;
+function pwIsRecovery(){try{return sessionStorage.getItem('pg-recovery')==='1'}catch(e){return false}}
+function pwMarkRecovery(src){try{const s=String(src||'')+' '+String(location.hash||'')+' '+String(location.search||'');if(/type=recovery/i.test(s)||/type%3Drecovery/i.test(s))sessionStorage.setItem('pg-recovery','1')}catch(e){}}
+pwMarkRecovery(START);
+
 const $=s=>document.querySelector(s),V=$('#view');
 const CLK='<span class="ico-clk" aria-hidden="true">🕒</span>';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -100,6 +104,13 @@ const badgeNew=async(before,keys)=>{const c=await badgeCtx(),ms=await DB.members
  out.forEach((t,i)=>setTimeout(()=>{const e=document.createElement('div');e.className='toast badge-toast';e.textContent='Nuovo badge! '+t;const g=document.createElement('div');g.className='igb';g.textContent=BRAND.ig()?'📸 Condividi e taggaci '+BRAND.ig().tag:'📸 Condividi le foto della serata';e.append(g);document.body.append(e);setTimeout(()=>e.remove(),3200)},2300+i*3300))};
 const nextEvening=()=>{const d=new Date(),wd=d.getDay();const add=wd===4||wd===0?0:(wd<4?4-wd:7-wd);d.setDate(d.getDate()+add);return{date:d.toLocaleDateString('sv-SE')}};
 const PW_MIN=8;
+function pwSetVal(neu,neu2){
+  neu=String(neu||'');neu2=String(neu2??'');
+  if(!neu)return{ok:false,msg:'Inserisci la nuova password',code:'E-PWD-V2'};
+  if(neu.length<PW_MIN)return{ok:false,msg:'La password deve avere almeno 8 caratteri',code:'E-PWD-V3'};
+  if(neu!==neu2)return{ok:false,msg:'Le due password non coincidono: riscrivile uguali',code:'E-PWD-V4'};
+  return{ok:true};
+}
 function pwChangeVal(cur,neu,neu2){
   cur=String(cur||'');neu=String(neu||'');neu2=String(neu2??'');
   if(!cur)return{ok:false,msg:'Inserisci la password attuale',code:'E-PWD-V1'};
@@ -116,10 +127,11 @@ function pwProfilo(V){
   const box=el('div','card pfl');box.id='pwbox';
   const row=el('div','lr');row.id='pwopen';row.tabIndex=0;row.setAttribute('role','button');row.setAttribute('aria-expanded','false');row.setAttribute('aria-controls','pwform');
   row.append(el('span','ic','🔑'),el('span','t',null),el('span','ar','▸'));
-  row.querySelector('.t').append(el('b',null,'Cambia password'));
+  row.querySelector('.t').append(el('b',null,pwIsRecovery()?'Imposta nuova password':'Cambia password'));
   const form=el('div','pwform');form.id='pwform';form.hidden=true;
   const field=(id,lab,auto)=>{const l=el('label',null,lab);l.setAttribute('for',id);const i=document.createElement('input');i.id=id;i.type='password';i.autocomplete=auto;i.maxLength=128;form.append(l,i)};
-  field('pwcur','Password attuale','current-password');
+  const rec=pwIsRecovery();
+  if(!rec)field('pwcur','Password attuale','current-password');
   field('pwnew','Nuova password (almeno 8 caratteri)','new-password');
   field('pwnew2','Ripeti nuova password','new-password');
   const show=el('label','gck');const cb=document.createElement('input');cb.type='checkbox';cb.id='pwshow';cb.style.width='auto';
@@ -130,20 +142,23 @@ function pwProfilo(V){
   form.append(goB,cancel);
   box.append(row,form);
   V.querySelector('.card.prof').after(box);
-  const setOpen=on=>{form.hidden=!on;row.setAttribute('aria-expanded',String(on));row.querySelector('.ar').textContent=on?'▾':'▸';if(on)setTimeout(()=>{const i=document.getElementById('pwcur');if(i)i.focus({preventScroll:true})},150)};
+  const setOpen=on=>{form.hidden=!on;row.setAttribute('aria-expanded',String(on));row.querySelector('.ar').textContent=on?'▾':'▸';if(on)setTimeout(()=>{const i=document.getElementById(rec?'pwnew':'pwcur')||document.getElementById('pwnew');if(i)i.focus({preventScroll:true})},150)};
   const clear=()=>{['pwcur','pwnew','pwnew2'].forEach(id=>{const i=document.getElementById(id);if(i){i.value='';i.type='password'}});cb.checked=false;err.hidden=true;err.textContent=''};
   const showErr=(msg,code)=>{err.hidden=false;err.textContent=msg+(code?' ['+code+']':'');if(typeof toastVal==='function')toastVal(msg,code)};
   row.onclick=()=>setOpen(form.hidden);
   row.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setOpen(form.hidden)}};
   cancel.onclick=()=>{clear();setOpen(false)};
   cb.onchange=()=>['pwcur','pwnew','pwnew2'].forEach(id=>{const i=document.getElementById(id);if(i)i.type=cb.checked?'text':'password'});
+  if(rec){goB.textContent='Salva password';setOpen(true)}
   goB.onclick=async()=>{
     const cur=(document.getElementById('pwcur')||{}).value||'',neu=(document.getElementById('pwnew')||{}).value||'',neu2=(document.getElementById('pwnew2')||{}).value||'';
-    const v=pwChangeVal(cur,neu,neu2);if(!v.ok)return showErr(v.msg,v.code);
+    const v=rec?pwSetVal(neu,neu2):pwChangeVal(cur,neu,neu2);if(!v.ok)return showErr(v.msg,v.code);
     if(!DB.remote||DB.status!=='online')return showErr('Sei offline: il cambio password richiede la connessione','E-PWD-V7');
     goB.disabled=true;
-    try{await DB.remote.changePassword(cur,neu);clear();setOpen(false);toast('Password aggiornata')}
-    catch(e){
+    try{
+      if(rec){await DB.remote.setPassword(neu);try{sessionStorage.removeItem('pg-recovery')}catch(e){}clear();setOpen(false);toast('Password impostata. Da ora entra con questa.')}
+      else{await DB.remote.changePassword(cur,neu);clear();setOpen(false);toast('Password aggiornata')}
+    }catch(e){
       const raw=typeof errTesto==='function'?errTesto(e):String((e&&e.message)||e||'');
       if(/invalid login credentials|invalid_credentials|invalid_grant|password attuale non è corretta/i.test(raw))showErr('La password attuale non è corretta','E-PWD-V8');
       else if(typeof errSpiega==='function'){const r=errSpiega(e,'PWD');err.hidden=false;err.textContent=r.msg+(r.code?' ['+r.code+']':'');if(typeof toastErr==='function')toastErr(e,'PWD')}

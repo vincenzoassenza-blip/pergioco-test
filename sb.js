@@ -41,6 +41,7 @@ const SupabaseAdapter={
 async init(){const c=window.PERGIOCO_CONFIG||{};if(!c.supabaseUrl||!c.supabaseAnonKey)return 'local';
   if(!window.supabase)return 'nolib';
   this.client=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+  try{this.client.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){try{sessionStorage.setItem('pg-recovery','1')}catch(e){}}})}catch(e){}
   const {data:ss}=await this.client.auth.getSession();if(!ss.session)return 'auth';
   {const st=await this.statoAccesso();if(st&&st.blocca_app)return 'blocked'}
   // v40: avvio immediato dalla copia locale (solo se è dello stesso account) e aggiornamento in sottofondo
@@ -51,6 +52,7 @@ async init(){const c=window.PERGIOCO_CONFIG||{};if(!c.supabaseUrl||!c.supabaseAn
   catch(e){if(isMissing(e))return 'missing';return this.cache._load()?'offline':'nolib'}},
  // --- autenticazione admin (Supabase Auth, email + password) ---
  async signIn(email,password){const {error}=await this.client.auth.signInWithPassword({email,password});if(error)throw error;return this.isAdmin()},
+ async setPassword(neu){const {error}=await this.client.auth.updateUser({password:neu});if(error)throw error},
  async changePassword(cur,neu){
   const u=await this.user();const email=u&&u.email;
   if(!email){const e=new Error('Non trovo l\'email del tuo account. Esci e accedi di nuovo.');e.code='E-PWD-V6';throw e}
