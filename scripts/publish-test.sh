@@ -97,6 +97,12 @@ if '#pg-test-banner' not in css:
     )
     (dst/'styles.css').write_text(css)
 
+# Il CSP di produzione permette solo il progetto ufficiale: nel test va sostituito.
+html=(dst/'index.html').read_text()
+html=html.replace('https://egmrtcezrjyoynlhknpz.supabase.co','https://oosqsjbtlixufqscdwou.supabase.co')
+html=html.replace('wss://egmrtcezrjyoynlhknpz.supabase.co','wss://oosqsjbtlixufqscdwou.supabase.co')
+(dst/'index.html').write_text(html)
+
 cfg=(dst/'config.js').read_text()
 if 'PERGIOCO_TEST' not in cfg:
     sys.exit("config.js di test mancante: non pubblico per non puntare accidentalmente alla produzione")
