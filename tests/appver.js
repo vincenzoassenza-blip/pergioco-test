@@ -6,7 +6,7 @@ const APP_VERSION=(read('brand.js').match(/APP_VERSION='([^']+)'/)||[])[1]||'';
 const esc=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const swTxt=()=>read('sw.js');
 const idxTxt=()=>read('index.html');
-const swCache=()=>new RegExp(`const C='pergioco-v${esc(APP_VERSION)}'`).test(swTxt());
+const swCache=()=>new RegExp(`const C='pergioco(?:-test)?-v${esc(APP_VERSION)}(?:\\.[0-9]+)?'`).test(swTxt());
 const hasAsset=name=>{const re=new RegExp(esc(name)+'\\?v=');return re.test(idxTxt())&&re.test(swTxt())};
 const cssBlock=ver=>{
   const css=read('styles.css');
