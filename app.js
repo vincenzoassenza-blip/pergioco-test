@@ -2,10 +2,6 @@ const romeToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome'}).fo
 // immagini non caricabili (cover, locandine, icone): si nascondono invece di mostrare l'icona rotta o il testo alternativo
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG')t.classList.add('imgko')},true);
 const START=location.hash;
-function pwIsRecovery(){try{return sessionStorage.getItem('pg-recovery')==='1'}catch(e){return false}}
-function pwMarkRecovery(src){try{const s=String(src||'')+' '+String(location.hash||'')+' '+String(location.search||'');if(/type=recovery/i.test(s)||/type%3Drecovery/i.test(s))sessionStorage.setItem('pg-recovery','1')}catch(e){}}
-pwMarkRecovery(START);
-
 const $=s=>document.querySelector(s),V=$('#view');
 const CLK='<span class="ico-clk" aria-hidden="true">🕒</span>';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -104,13 +100,6 @@ const badgeNew=async(before,keys)=>{const c=await badgeCtx(),ms=await DB.members
  out.forEach((t,i)=>setTimeout(()=>{const e=document.createElement('div');e.className='toast badge-toast';e.textContent='Nuovo badge! '+t;const g=document.createElement('div');g.className='igb';g.textContent=BRAND.ig()?'📸 Condividi e taggaci '+BRAND.ig().tag:'📸 Condividi le foto della serata';e.append(g);document.body.append(e);setTimeout(()=>e.remove(),3200)},2300+i*3300))};
 const nextEvening=()=>{const d=new Date(),wd=d.getDay();const add=wd===4||wd===0?0:(wd<4?4-wd:7-wd);d.setDate(d.getDate()+add);return{date:d.toLocaleDateString('sv-SE')}};
 const PW_MIN=8;
-function pwSetVal(neu,neu2){
-  neu=String(neu||'');neu2=String(neu2??'');
-  if(!neu)return{ok:false,msg:'Inserisci la nuova password',code:'E-PWD-V2'};
-  if(neu.length<PW_MIN)return{ok:false,msg:'La password deve avere almeno 8 caratteri',code:'E-PWD-V3'};
-  if(neu!==neu2)return{ok:false,msg:'Le due password non coincidono: riscrivile uguali',code:'E-PWD-V4'};
-  return{ok:true};
-}
 function pwChangeVal(cur,neu,neu2){
   cur=String(cur||'');neu=String(neu||'');neu2=String(neu2??'');
   if(!cur)return{ok:false,msg:'Inserisci la password attuale',code:'E-PWD-V1'};
@@ -127,11 +116,10 @@ function pwProfilo(V){
   const box=el('div','card pfl');box.id='pwbox';
   const row=el('div','lr');row.id='pwopen';row.tabIndex=0;row.setAttribute('role','button');row.setAttribute('aria-expanded','false');row.setAttribute('aria-controls','pwform');
   row.append(el('span','ic','🔑'),el('span','t',null),el('span','ar','▸'));
-  row.querySelector('.t').append(el('b',null,pwIsRecovery()?'Imposta nuova password':'Cambia password'));
+  row.querySelector('.t').append(el('b',null,'Cambia password'));
   const form=el('div','pwform');form.id='pwform';form.hidden=true;
   const field=(id,lab,auto)=>{const l=el('label',null,lab);l.setAttribute('for',id);const i=document.createElement('input');i.id=id;i.type='password';i.autocomplete=auto;i.maxLength=128;form.append(l,i)};
-  const rec=pwIsRecovery();
-  if(!rec)field('pwcur','Password attuale','current-password');
+  field('pwcur','Password attuale','current-password');
   field('pwnew','Nuova password (almeno 8 caratteri)','new-password');
   field('pwnew2','Ripeti nuova password','new-password');
   const show=el('label','gck');const cb=document.createElement('input');cb.type='checkbox';cb.id='pwshow';cb.style.width='auto';
@@ -142,23 +130,20 @@ function pwProfilo(V){
   form.append(goB,cancel);
   box.append(row,form);
   V.querySelector('.card.prof').after(box);
-  const setOpen=on=>{form.hidden=!on;row.setAttribute('aria-expanded',String(on));row.querySelector('.ar').textContent=on?'▾':'▸';if(on)setTimeout(()=>{const i=document.getElementById(rec?'pwnew':'pwcur')||document.getElementById('pwnew');if(i)i.focus({preventScroll:true})},150)};
+  const setOpen=on=>{form.hidden=!on;row.setAttribute('aria-expanded',String(on));row.querySelector('.ar').textContent=on?'▾':'▸';if(on)setTimeout(()=>{const i=document.getElementById('pwcur');if(i)i.focus({preventScroll:true})},150)};
   const clear=()=>{['pwcur','pwnew','pwnew2'].forEach(id=>{const i=document.getElementById(id);if(i){i.value='';i.type='password'}});cb.checked=false;err.hidden=true;err.textContent=''};
   const showErr=(msg,code)=>{err.hidden=false;err.textContent=msg+(code?' ['+code+']':'');if(typeof toastVal==='function')toastVal(msg,code)};
   row.onclick=()=>setOpen(form.hidden);
   row.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setOpen(form.hidden)}};
   cancel.onclick=()=>{clear();setOpen(false)};
   cb.onchange=()=>['pwcur','pwnew','pwnew2'].forEach(id=>{const i=document.getElementById(id);if(i)i.type=cb.checked?'text':'password'});
-  if(rec){goB.textContent='Salva password';setOpen(true)}
   goB.onclick=async()=>{
     const cur=(document.getElementById('pwcur')||{}).value||'',neu=(document.getElementById('pwnew')||{}).value||'',neu2=(document.getElementById('pwnew2')||{}).value||'';
-    const v=rec?pwSetVal(neu,neu2):pwChangeVal(cur,neu,neu2);if(!v.ok)return showErr(v.msg,v.code);
+    const v=pwChangeVal(cur,neu,neu2);if(!v.ok)return showErr(v.msg,v.code);
     if(!DB.remote||DB.status!=='online')return showErr('Sei offline: il cambio password richiede la connessione','E-PWD-V7');
     goB.disabled=true;
-    try{
-      if(rec){await DB.remote.setPassword(neu);try{sessionStorage.removeItem('pg-recovery')}catch(e){}clear();setOpen(false);toast('Password impostata. Da ora entra con questa.')}
-      else{await DB.remote.changePassword(cur,neu);clear();setOpen(false);toast('Password aggiornata')}
-    }catch(e){
+    try{await DB.remote.changePassword(cur,neu);clear();setOpen(false);toast('Password aggiornata')}
+    catch(e){
       const raw=typeof errTesto==='function'?errTesto(e):String((e&&e.message)||e||'');
       if(/invalid login credentials|invalid_credentials|invalid_grant|password attuale non è corretta/i.test(raw))showErr('La password attuale non è corretta','E-PWD-V8');
       else if(typeof errSpiega==='function'){const r=errSpiega(e,'PWD');err.hidden=false;err.textContent=r.msg+(r.code?' ['+r.code+']':'');if(typeof toastErr==='function')toastErr(e,'PWD')}
@@ -202,7 +187,7 @@ ${adminMode()?` <details class="card"><summary><b>Aggiungi un gioco</b></summary
   <div class="chips"><span class="chip">👥 ${g.min}–${g.max}</span><span class="chip">${CLK} ${g.minT}–${g.maxT} min</span><span class="chip">🎂 ${g.age}+</span>${g.coop?'<span class="chip coop">Cooperativo</span>':''}</div></div>`}).join(''):'<p class="muted">Nessun gioco adatto. Provate a cambiare i filtri.</p>';$('#gl').querySelectorAll('[data-gp]').forEach(b=>b.onclick=()=>gamePage(gs.find(g=>g.id===b.dataset.gp),ps))};
  $('#q').oninput=e=>{f.q=e.target.value.toLowerCase();draw()};$('#n').onchange=e=>{f.n=+e.target.value;draw()};$('#t').onchange=e=>{f.t=+e.target.value;draw()};$('#so').onchange=e=>{f.s=e.target.value;draw()};
  if($('#ga'))$('#ga').onclick=async()=>{const n=$('#gn').value.trim();if(!n)return toast('Inserisci il nome');const gf=$('#ga').closest('details');['#g1','#g2','#g3','#g4','#g5'].forEach(s=>$(s).required=true);if(!numForm(gf))return;if(+$('#g2').value<+$('#g1').value){$('#g2').classList.add('bad');return modal('⚠️ «Giocatori max» non può essere minore di «Giocatori min».',{cancel:false})}if(+$('#g4').value<+$('#g3').value){$('#g4').classList.add('bad');return modal('⚠️ «Minuti max» non può essere minore di «Minuti min».',{cancel:false})}await DB.addGame({name:n,min:+$('#g1').value,max:+$('#g2').value,minT:+$('#g3').value,maxT:+$('#g4').value,age:+$('#g5').value,coop:$('#gc').checked});toast('Gioco aggiunto');go('ludoteca')};draw()},
-async nuova(ed){if(typeof ACC!=='undefined'&&ACC.bloccaAzioni()){V.innerHTML=`<h2>Nuova partita</h2>${ACC.bannerHtml()}`;return}const gs=await DB.games(),all=await DB.members(),ms=all.filter(m=>(typeof socioAttivo==='function'?socioAttivo(m):m.active)||(ed&&ed.players.some(x=>x.memberId===m.id)));const today=romeToday();const _u=DB.remote?(await DB.remote.user())?.id:null,meM=all.find(m=>_u&&m.userId===_u),lockId=!adminMode()&&meM&&!(ed&&ed.id)?meM.id:null;
+async nuova(ed){if(typeof ACC!=='undefined'&&ACC.bloccaAzioni()){V.innerHTML=`<h2>Nuova partita</h2>${ACC.bannerHtml()}`;return}const gs=(await DB.games()).filter(g=>!g.hidden||(ed&&ed.gameId&&g.id===ed.gameId)),all=await DB.members(),ms=all.filter(m=>(typeof socioAttivo==='function'?socioAttivo(m):m.active)||(ed&&ed.players.some(x=>x.memberId===m.id)));const today=romeToday();const _u=DB.remote?(await DB.remote.user())?.id:null,meM=all.find(m=>_u&&m.userId===_u),lockId=!adminMode()&&meM&&!(ed&&ed.id)?meM.id:null;
  V.innerHTML=`<h2>${ed&&ed.id?'Modifica partita':'Registra una partita'}</h2>${ed&&SFID(ed.sfidaId)?'<p class="sfb">⚖️ <b>Sfida equilibrata</b> · questa partita conta come sfida (EXP e badge sfide)</p>':''}<div class="card"><label>Gioco</label><select id="g"><option value="">—</option>${gs.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`)}</select>
  <label>Data</label><input id="d" type="date" value="${today}" required><div class="dday" id="dday"></div>
  <label>Modalità</label><div class="seg" id="mode"><button data-m="0" class="on">Competitiva</button><button data-m="1">Cooperativa</button></div><p class="muted hint">ⓘ Competitiva: ognuno per sé, vince chi arriva primo. Cooperativa: si vince o si perde tutti insieme.</p>
@@ -253,7 +238,7 @@ async giocatori(){const gs=await DB.games(),ms=await DB.members(),bc=await badge
    if(!ids){const n=norm(q);ids=ms.filter(m=>norm([m.nome,m.cognome,m.soprannome,m.nome].join(' ')).includes(n)).slice(0,20).map(m=>m.id)}
    if(k!==tk)return;const l=ids.map(id=>ms.find(m=>m.id===id)).filter(Boolean);R.innerHTML=l.map(mini).join('')+(l.length===20?'<p class="muted">Mostrati i primi 20: affina la ricerca.</p>':'')||'<p class="muted">Nessun socio trovato.</p>'},250)}},
 // v40.6 anteprima — Agenda «elenco per giorno»: giorni in alto, tavoli raggruppati, «+» con foglio dal basso, «Siediti/Lascia il posto»
-async serata(){const gs=await DB.games(),all=await DB.members(),ms=all.filter(m=>typeof socioAttivo==='function'?socioAttivo(m):m.active),ts=await DB.allTables();const _uid=DB.remote?(await DB.remote.user())?.id:null,meM=all.find(m=>_uid&&m.userId===_uid),staff=adminMode(),oggi=romeToday(),blocked=typeof ACC!=='undefined'&&ACC.bloccaAzioni();
+async serata(){const gs=gamesVis(await DB.games()),all=await DB.members(),ms=all.filter(m=>typeof socioAttivo==='function'?socioAttivo(m):m.active),ts=await DB.allTables();const _uid=DB.remote?(await DB.remote.user())?.id:null,meM=all.find(m=>_uid&&m.userId===_uid),staff=adminMode(),oggi=romeToday(),blocked=typeof ACC!=='undefined'&&ACC.bloccaAzioni();
  window._ser=window._ser||{date:oggi};const S=window._ser;if(!isoOk(S.date)||S.date<oggi)S.date=oggi;
  const mn=id=>{const m=all.find(m=>m.id===id);return m?memberName(m):'Socio'};
  const vis=ts.filter(t=>isoOk(t.date)&&t.date>=oggi).sort((a,b)=>a.date.localeCompare(b.date)||String(a.time||'99').localeCompare(String(b.time||'99')));

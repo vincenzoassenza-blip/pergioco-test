@@ -44,5 +44,5 @@ let ok=0,n=0;const chk=(c,m)=>{n++;if(c)ok++;else console.log('FAIL',m)};const W
  // sorgente
  const src=fs.readFileSync('community.js','utf8'),code=src.replace(/\/\/.*$/gm,''),css=fs.readFileSync('styles.css','utf8').split('/* v41.4 — Community')[1]||'';
  chk(!/ludoteca|club/i.test(code),'nessun «ludoteca/club» nel codice');const {cssBlock}=require('./appver');const blk4=cssBlock('v41.4');chk(blk4.length>100&&!/#[0-9a-f]{3,6}\b/i.test(blk4.replace(/#cfd8ea|#0000000f|--ok:#1e7a43/gi,'')),'CSS v41.4 solo variabili (salvo bordi neutri)');
- chk(/community\.js\?v=41\.\d+(?:\.\d+)?/.test(fs.readFileSync('index.html','utf8'))&&/pergioco(?:-test)?-v41\.\d+/.test(fs.readFileSync('sw.js','utf8'))&&/community\.js/.test(fs.readFileSync('sw.js','utf8')),'versione 41.4+ e cache');
+ chk(/community\.js\?v=41\.\d+(?:\.\d+)?/.test(fs.readFileSync('index.html','utf8'))&&/pergioco-v41\.\d+/.test(fs.readFileSync('sw.js','utf8'))&&/community\.js/.test(fs.readFileSync('sw.js','utf8')),'versione 41.4+ e cache');
  await b.close();console.log(`v41.4-community: ${ok}/${n}`);process.exit(ok===n?0:1)})();

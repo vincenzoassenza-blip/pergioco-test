@@ -2,8 +2,8 @@
 // Lavora su una copia locale (cache) e invia le differenze a Supabase; se offline
 // le mette in coda e le sincronizza al ritorno della connessione.
 const MAP={
- games:{t:'games',to:g=>({id:g.id,added_at:g.addedAt||null,name:g.name,min_players:g.min,max_players:g.max,min_time:g.minT,max_time:g.maxT,age:g.age,coop:!!g.coop,bgg_id:g.bggId??null,thumb:g.thumb??null,play_time:g.playTime??null,year:g.year??null,best_players:g.best??null,rec_players:g.rec??null,categories:g.categories??null,mechanics:g.mechanics??null,is_expansion:!!g.isExp,kind:g.kind==='gdr'?'gdr':'gdt',rpg_system:g.kind==='gdr'?(g.rpgSystem||[]):[],rpg_genre:g.kind==='gdr'?(g.rpgGenre||[]):[],rpg_publisher:g.kind==='gdr'?(g.rpgPublisher||[]):[],rpg_lang:g.kind==='gdr'?(g.rpgLang||[]):[]}),
-  from:r=>({id:r.id,addedAt:r.added_at,name:r.name,min:r.min_players,max:r.max_players,minT:r.min_time,maxT:r.max_time,age:r.age,coop:r.coop,bggId:r.bgg_id,thumb:r.thumb,playTime:r.play_time??null,year:r.year??null,best:r.best_players||[],rec:r.rec_players||[],categories:r.categories||[],mechanics:r.mechanics||[],isExp:!!r.is_expansion,kind:r.kind==='gdr'?'gdr':'gdt',rpgSystem:r.rpg_system||[],rpgGenre:r.rpg_genre||[],rpgPublisher:r.rpg_publisher||[],rpgLang:r.rpg_lang||[]})},
+ games:{t:'games',to:g=>({id:g.id,added_at:g.addedAt||null,name:g.name,min_players:g.min,max_players:g.max,min_time:g.minT,max_time:g.maxT,age:g.age,coop:!!g.coop,bgg_id:g.bggId??null,thumb:g.thumb??null,play_time:g.playTime??null,year:g.year??null,best_players:g.best??null,rec_players:g.rec??null,categories:g.categories??null,mechanics:g.mechanics??null,is_expansion:!!g.isExp,kind:g.kind==='gdr'?'gdr':'gdt',rpg_system:g.kind==='gdr'?(g.rpgSystem||[]):[],rpg_genre:g.kind==='gdr'?(g.rpgGenre||[]):[],rpg_publisher:g.kind==='gdr'?(g.rpgPublisher||[]):[],rpg_lang:g.kind==='gdr'?(g.rpgLang||[]):[],hidden:!!g.hidden}),
+  from:r=>({id:r.id,addedAt:r.added_at,name:r.name,min:r.min_players,max:r.max_players,minT:r.min_time,maxT:r.max_time,age:r.age,coop:r.coop,bggId:r.bgg_id,thumb:r.thumb,playTime:r.play_time??null,year:r.year??null,best:r.best_players||[],rec:r.rec_players||[],categories:r.categories||[],mechanics:r.mechanics||[],isExp:!!r.is_expansion,kind:r.kind==='gdr'?'gdr':'gdt',rpgSystem:r.rpg_system||[],rpgGenre:r.rpg_genre||[],rpgPublisher:r.rpg_publisher||[],rpgLang:r.rpg_lang||[],hidden:!!r.hidden})},
  members:{t:'members',cols:'id,nome,cognome,soprannome,active,sospeso,created_at,user_id,avatar,color,fav_game_id,stats_pubbliche,photo_url',
   // tessera e user_id si inviano solo se noti (la tessera non e' leggibile dai non admin)
   to:m=>{const r={id:m.id,nome:m.nome,cognome:m.cognome||null,soprannome:m.soprannome||null,active:m.active!==false};if(m.tessera!==undefined)r.tessera=m.tessera||null;if(m.userId!==undefined)r.user_id=m.userId||null;if(m.avatar!==undefined)r.avatar=m.avatar||null;if(m.color!==undefined)r.color=m.color||null;if(m.favGameId!==undefined)r.fav_game_id=m.favGameId||null;return r},
@@ -41,7 +41,6 @@ const SupabaseAdapter={
 async init(){const c=window.PERGIOCO_CONFIG||{};if(!c.supabaseUrl||!c.supabaseAnonKey)return 'local';
   if(!window.supabase)return 'nolib';
   this.client=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-  try{this.client.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){try{sessionStorage.setItem('pg-recovery','1')}catch(e){}}})}catch(e){}
   const {data:ss}=await this.client.auth.getSession();if(!ss.session)return 'auth';
   {const st=await this.statoAccesso();if(st&&st.blocca_app)return 'blocked'}
   // v40: avvio immediato dalla copia locale (solo se è dello stesso account) e aggiornamento in sottofondo
@@ -52,7 +51,6 @@ async init(){const c=window.PERGIOCO_CONFIG||{};if(!c.supabaseUrl||!c.supabaseAn
   catch(e){if(isMissing(e))return 'missing';return this.cache._load()?'offline':'nolib'}},
  // --- autenticazione admin (Supabase Auth, email + password) ---
  async signIn(email,password){const {error}=await this.client.auth.signInWithPassword({email,password});if(error)throw error;return this.isAdmin()},
- async setPassword(neu){const {error}=await this.client.auth.updateUser({password:neu});if(error)throw error},
  async changePassword(cur,neu){
   const u=await this.user();const email=u&&u.email;
   if(!email){const e=new Error('Non trovo l\'email del tuo account. Esci e accedi di nuovo.');e.code='E-PWD-V6';throw e}
@@ -81,6 +79,8 @@ async init(){const c=window.PERGIOCO_CONFIG||{};if(!c.supabaseUrl||!c.supabaseAn
  async removePhotoFile(){const u=await this.user();if(!u||!u.id)return;try{await this.client.storage.from('profile-photos').remove(['webp','jpg','jpeg','png'].map(e=>u.id+'/avatar.'+e))}catch(e){}},
  async codes(){const {data,error}=await this.client.rpc('admin_codes');if(error)throw error;return data||[]},
  async importGamesBgg(games){const {data,error}=await this.client.rpc('games_import_bgg',{p_games:games});if(error)throw error;await this.refresh();return data},
+ async removeGameInfo(id){const {data,error}=await this.client.rpc('admin_game_remove_info',{p_id:id});if(error)throw error;return data},
+ async removeGame(id){const {data,error}=await this.client.rpc('admin_game_remove',{p_id:id});if(error)throw error;await this.refresh();return data},
  async newCode(memberId){const {data,error}=await this.client.rpc('admin_new_code',{p_member_id:memberId});if(error)throw error;return data},
  async deleteCode(memberId){const {error}=await this.client.rpc('admin_delete_code',{p_member_id:memberId});if(error)throw error},
  async setLink(memberId,userId){const {error}=await this.client.from('members').update({user_id:userId}).eq('id',memberId);if(error)throw error;await this.refresh()},
