@@ -920,6 +920,7 @@ header .brand,header .sub,body.adm header .brand,body.adm header .sub{padding-ri
 /* v41.18.2 — Elimina gioco nella scheda */
 .gdel{margin:16px 0 4px;padding:12px}
 .gdel .danger{width:100%}
+.pfexpl{margin-top:8px}.explist{display:flex;flex-direction:column;gap:4px;margin:6px 0 0}.explopt{width:100%;text-align:left}
 
 /* Banner fisso dell'ambiente di test */
 #pg-test-banner{position:sticky;top:0;z-index:30;background:#b45309;color:#fff;text-align:center;font-weight:800;font-size:13px;letter-spacing:.04em;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top));box-shadow:0 1px 0 rgba(0,0,0,.15)}

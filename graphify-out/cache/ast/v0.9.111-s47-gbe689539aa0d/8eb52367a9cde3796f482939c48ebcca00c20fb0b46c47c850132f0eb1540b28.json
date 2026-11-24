@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_supabase_reset_all_sql", "label": "reset-all.sql", "file_type": "code", "source_file": "supabase/reset-all.sql", "source_location": null}], "edges": []}
